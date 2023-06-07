@@ -1,0 +1,52 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.SignalR
+@using Microsoft.AspNetCore.SignalR.Client
+@using Contracts
+@using MtRabbit.Hubs;
+@inject NavigationManager Navigation
+
+<PageTitle>Index</PageTitle>
+
+<h1 class="text-center">INFORMACION DE PC</h1>
+
+<h2>CPU%</h2>
+<input readonly @bind-value=CpuUtilization />
+<h2>CPU Count</h2>
+<input readonly @bind-value=ProcessorCount />
+<h2>Available RAM</h2>
+<input readonly @bind-value=Ram />
+
+@code{
+    private HubConnection? hubConnection;
+    private float CpuUtilization;
+    private int ProcessorCount;
+    private float Ram;
+
+    protected override async Task OnInitializedAsync()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/pcinfohub").ToString())
+            .Build();
+
+        hubConnection.On<PcInfo>("broadcastMessage", (pcInfo) =>
+        {
+            CpuUtilization = pcInfo.CpuUsage;
+            ProcessorCount = pcInfo.ProccessorCount;
+            Ram = pcInfo.Ram;
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+}
